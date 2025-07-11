@@ -59,6 +59,9 @@ fun MainScreen() {
             composable(BottomNavItem.Listar.route) {
                 GridMenuScreen()
             }
+            composable(BottomNavItem.Favoritos.route) {
+                FavouriteScreen()
+            }
         }
     }
 }
