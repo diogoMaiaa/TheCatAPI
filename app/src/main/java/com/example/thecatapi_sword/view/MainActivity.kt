@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -22,53 +23,51 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
+import com.example.thecatapi_sword.view.ui.theme.BreedDetailScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         enableEdgeToEdge()
         setContent {
             TheCatAPI_SwordTheme {
-                MainScreen()
+                val navController = rememberNavController()
+                Scaffold(
+                    bottomBar = {
+                        BottomNavBar(
+                            currentRoute = BottomNavItem.Listar.route,
+                            navController = navController,
+                            activity = this
+                        )
+                    }
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = BottomNavItem.Listar.route,
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
+                        composable(BottomNavItem.Listar.route) {
+                            GridMenuScreen(navController = navController)
+                        }
+                        composable("details") {
+                            BreedDetailScreen()
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun MainScreen() {
-    val navController = rememberNavController()
-
-    Scaffold(
-        bottomBar = {
-            BottomNavBar(navController = navController)
-        }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Listar.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(BottomNavItem.Listar.route) {
-                GridMenuScreen()
-            }
-            composable(BottomNavItem.Favoritos.route) {
-                FavouriteScreen()
-            }
-        }
-    }
-}
-
-
-@Composable
-fun GridMenuScreen(modifier: Modifier = Modifier) {
+fun GridMenuScreen(navController: NavController) {
     var searchQuery by remember { mutableStateOf("") }
 
     val menuItems = listOf(
@@ -80,7 +79,7 @@ fun GridMenuScreen(modifier: Modifier = Modifier) {
     val favoriteIndices = listOf(0, 2, 4)
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
@@ -102,12 +101,7 @@ fun GridMenuScreen(modifier: Modifier = Modifier) {
             shape = RoundedCornerShape(50.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp, bottom = 12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+                .padding(top = 4.dp, bottom = 12.dp)
         )
 
         LazyVerticalGrid(
@@ -123,7 +117,8 @@ fun GridMenuScreen(modifier: Modifier = Modifier) {
                 ) {
                     GridMenuItem(
                         imageUrl = imageUrl,
-                        isFavorite = index in favoriteIndices
+                        isFavorite = index in favoriteIndices,
+                        onClick = { navController.navigate("details") }
                     )
                     Text(
                         text = title,
@@ -138,13 +133,13 @@ fun GridMenuScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun GridMenuItem(imageUrl: String, isFavorite: Boolean) {
+fun GridMenuItem(imageUrl: String, isFavorite: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(16.dp))
-            .clickable { }
+            .clickable { onClick() }
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -158,7 +153,7 @@ fun GridMenuItem(imageUrl: String, isFavorite: Boolean) {
 
         Icon(
             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-            contentDescription = "Favorito",
+            contentDescription = "Favourite",
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(8.dp)

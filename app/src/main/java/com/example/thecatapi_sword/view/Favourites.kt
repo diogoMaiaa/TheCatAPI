@@ -8,16 +8,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.*
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
+import com.example.thecatapi_sword.view.ui.theme.BreedDetailScreen
+import androidx.navigation.NavController
+
 
 class Favourites : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,21 +27,43 @@ class Favourites : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TheCatAPI_SwordTheme {
-                FavouriteScreen()
+                val navController = rememberNavController()
+                Scaffold(
+                    bottomBar = {
+                        BottomNavBar(
+                            currentRoute = BottomNavItem.Favoritos.route,
+                            navController = navController,
+                            activity = this
+                        )
+                    }
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = BottomNavItem.Favoritos.route,
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
+                        composable(BottomNavItem.Favoritos.route) {
+                            FavouriteScreen(navController = navController)
+                        }
+                        composable("details") {
+                            BreedDetailScreen()
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun FavouriteScreen(modifier: Modifier = Modifier) {
+fun FavouriteScreen(modifier: Modifier = Modifier, navController: NavController) {
     val menuItems = listOf(
         "Siamês", "Persa", "Maine Coon", "Bengal",
         "Sphynx", "Ragdoll", "Abyssinian", "British Shorthair"
     )
 
     val imageUrl = "https://cdn2.thecatapi.com/images/0XYvRd7oD.jpg"
-    val favoriteIndices = listOf(0, 1, 2, 3, 4, 5, 6, 7, 8)
+    val favoriteIndices = listOf(0, 1, 2, 3, 4, 5, 6, 7)
 
     Column(
         modifier = modifier
@@ -50,8 +74,7 @@ fun FavouriteScreen(modifier: Modifier = Modifier) {
             text = "Favoritos",
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
-                .padding(bottom = 20.dp),
+                .padding(top = 8.dp, bottom = 20.dp),
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.titleLarge
@@ -70,7 +93,8 @@ fun FavouriteScreen(modifier: Modifier = Modifier) {
                 ) {
                     GridMenuItem(
                         imageUrl = imageUrl,
-                        isFavorite = index in favoriteIndices
+                        isFavorite = index in favoriteIndices,
+                        onClick = { navController.navigate("details") }
                     )
                     Text(
                         text = title,
@@ -81,14 +105,5 @@ fun FavouriteScreen(modifier: Modifier = Modifier) {
                 }
             }
         }
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun FavouritesPreview() {
-    TheCatAPI_SwordTheme {
-        FavouriteScreen()
     }
 }
