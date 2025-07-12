@@ -30,6 +30,11 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
 import com.example.thecatapi_sword.view.ui.theme.BreedDetailScreen
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,7 +62,7 @@ class MainActivity : ComponentActivity() {
                             GridMenuScreen(navController = navController)
                         }
                         composable("details") {
-                            BreedDetailScreen()
+                            BreedDetailScreen(navController = navController)
                         }
                     }
                 }
@@ -96,7 +101,7 @@ fun GridMenuScreen(navController: NavController) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Pesquisar...") },
+            placeholder = { Text("Search...") },
             singleLine = true,
             shape = RoundedCornerShape(50.dp),
             modifier = Modifier
@@ -128,7 +133,12 @@ fun GridMenuScreen(navController: NavController) {
                     )
                 }
             }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                PaginationControls(currentPage = 1)
+            }
         }
+
+
     }
 }
 
@@ -158,5 +168,30 @@ fun GridMenuItem(imageUrl: String, isFavorite: Boolean, onClick: () -> Unit) {
                 .align(Alignment.TopEnd)
                 .padding(8.dp)
         )
+    }
+}
+
+@Composable
+fun PaginationControls(currentPage: Int = 1) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = {  }, enabled = false) {
+            Icon(Icons.Default.ArrowBack, contentDescription = "Previous")
+        }
+
+        Text(
+            text = "$currentPage",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        IconButton(onClick = {  }, enabled = false) {
+            Icon(Icons.Default.ArrowForward, contentDescription = "Next")
+        }
     }
 }

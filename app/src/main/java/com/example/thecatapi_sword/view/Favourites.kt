@@ -46,7 +46,7 @@ class Favourites : ComponentActivity() {
                             FavouriteScreen(navController = navController)
                         }
                         composable("details") {
-                            BreedDetailScreen()
+                            BreedDetailScreen(navController = navController)
                         }
                     }
                 }

@@ -20,6 +20,7 @@ sealed class BottomNavItem(val route: String, val label: String, val icon: andro
     object Favoritos : BottomNavItem("favoritos", "Favoritos", Icons.Default.Favorite)
 }
 
+
 @Composable
 fun BottomNavBar(
     currentRoute: String,
