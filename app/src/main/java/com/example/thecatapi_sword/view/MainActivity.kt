@@ -7,13 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,17 +21,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
 import com.example.thecatapi_sword.view.ui.theme.BreedDetailScreen
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-
-
+import com.example.thecatapi_sword.viewmodel.BreedViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,16 +66,19 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun GridMenuScreen(navController: NavController) {
+fun GridMenuScreen(
+    navController: NavController,
+    viewModel: BreedViewModel = viewModel()
+) {
     var searchQuery by remember { mutableStateOf("") }
+    val breeds = viewModel.breeds
+    val currentPage = viewModel.currentPage
+    val totalPages = viewModel.totalPages
+    val gridState = rememberLazyGridState()
 
-    val menuItems = listOf(
-        "Siamês", "Persa", "Maine Coon", "Bengal",
-        "Sphynx", "Ragdoll", "Abyssinian", "British Shorthair"
-    )
-
-    val imageUrl = "https://cdn2.thecatapi.com/images/0XYvRd7oD.jpg"
-    val favoriteIndices = listOf(0, 2, 4)
+    LaunchedEffect(currentPage) {
+        gridState.scrollToItem(0)
+    }
 
     Column(
         modifier = Modifier
@@ -110,40 +107,59 @@ fun GridMenuScreen(navController: NavController) {
         )
 
         LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(2),
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            itemsIndexed(menuItems) { index, title ->
+            itemsIndexed(breeds) { _, breed ->
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     GridMenuItem(
-                        imageUrl = imageUrl,
-                        isFavorite = index in favoriteIndices,
-                        onClick = { navController.navigate("details") }
+                        imageId = breed.reference_image_id ?: "",
+                        isFavorite = false,
+                        onClick = { navController.navigate("details") },
+                        viewModel = viewModel
                     )
                     Text(
-                        text = title,
+                        text = breed.name,
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
             }
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                PaginationControls(currentPage = 1)
+
+            item(span = { GridItemSpan(2) }) {
+                PaginationControls(
+                    currentPage = currentPage,
+                    totalPages = totalPages,
+                    onPrevious = { viewModel.fetchBreeds(currentPage - 1) },
+                    onNext = { viewModel.fetchBreeds(currentPage + 1) }
+                )
             }
         }
-
-
     }
 }
 
 @Composable
-fun GridMenuItem(imageUrl: String, isFavorite: Boolean, onClick: () -> Unit) {
+fun GridMenuItem(
+    imageId: String,
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    viewModel: BreedViewModel
+) {
+    var imageUrl by remember(imageId) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(imageId) {
+        if (imageId.isNotBlank()) {
+            imageUrl = viewModel.getImageUrl(imageId)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -153,7 +169,7 @@ fun GridMenuItem(imageUrl: String, isFavorite: Boolean, onClick: () -> Unit) {
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(imageUrl)
+                .data(imageUrl ?: "")
                 .crossfade(true)
                 .build(),
             contentDescription = null,
@@ -172,7 +188,12 @@ fun GridMenuItem(imageUrl: String, isFavorite: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun PaginationControls(currentPage: Int = 1) {
+fun PaginationControls(
+    currentPage: Int,
+    totalPages: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -180,17 +201,17 @@ fun PaginationControls(currentPage: Int = 1) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = {  }, enabled = false) {
+        IconButton(onClick = onPrevious, enabled = currentPage > 0) {
             Icon(Icons.Default.ArrowBack, contentDescription = "Previous")
         }
 
         Text(
-            text = "$currentPage",
+            text = "${currentPage + 1} / $totalPages",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        IconButton(onClick = {  }, enabled = false) {
+        IconButton(onClick = onNext, enabled = currentPage < totalPages - 1) {
             Icon(Icons.Default.ArrowForward, contentDescription = "Next")
         }
     }
