@@ -27,7 +27,6 @@ import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
-import com.example.thecatapi_sword.view.ui.theme.BreedDetailScreen
 import com.example.thecatapi_sword.viewmodel.BreedViewModel
 
 class MainActivity : ComponentActivity() {
@@ -41,7 +40,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     bottomBar = {
                         BottomNavBar(
-                            currentRoute = BottomNavItem.Listar.route,
+                            currentRoute = BottomNavItem.List.route,
                             navController = navController,
                             activity = this
                         )
@@ -49,14 +48,15 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = BottomNavItem.Listar.route,
+                        startDestination = BottomNavItem.List.route,
                         modifier = Modifier.padding(innerPadding)
                     ) {
-                        composable(BottomNavItem.Listar.route) {
+                        composable(BottomNavItem.List.route) {
                             GridMenuScreen(navController = navController)
                         }
-                        composable("details") {
-                            BreedDetailScreen(navController = navController)
+                        composable("details/{breedId}") { backStackEntry ->
+                            val breedId = backStackEntry.arguments?.getString("breedId")
+                            BreedDetailScreen(navController = navController, breedId = breedId ?: "")
                         }
                     }
                 }
@@ -121,7 +121,7 @@ fun GridMenuScreen(
                     GridMenuItem(
                         imageId = breed.reference_image_id ?: "",
                         isFavorite = false,
-                        onClick = { navController.navigate("details") },
+                        onClick = { navController.navigate("details/${breed.id}") },
                         viewModel = viewModel
                     )
                     Text(

@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
 sealed class BottomNavItem(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    object Listar : BottomNavItem("listar", "Listar", Icons.Default.List)
-    object Favoritos : BottomNavItem("favoritos", "Favoritos", Icons.Default.Favorite)
+    object List : BottomNavItem("list", "Breeds List", Icons.Default.List)
+    object Favourites : BottomNavItem("favourites", "Favourites", Icons.Default.Favorite)
 }
 
 
@@ -28,7 +28,7 @@ fun BottomNavBar(
     activity: ComponentActivity
 ) {
     val context = LocalContext.current
-    val items = listOf(BottomNavItem.Listar, BottomNavItem.Favoritos)
+    val items = listOf(BottomNavItem.List, BottomNavItem.Favourites)
 
     NavigationBar(
         modifier = Modifier
@@ -46,13 +46,13 @@ fun BottomNavBar(
                 onClick = {
                     if (!selected) {
                         when (item.route) {
-                            BottomNavItem.Listar.route -> {
+                            BottomNavItem.List.route -> {
                                 if (context !is MainActivity) {
                                     context.startActivity(Intent(context, MainActivity::class.java))
                                     activity.finish()
                                 }
                             }
-                            BottomNavItem.Favoritos.route -> {
+                            BottomNavItem.Favourites.route -> {
                                 if (context !is Favourites) {
                                     context.startActivity(Intent(context, Favourites::class.java))
                                     activity.finish()

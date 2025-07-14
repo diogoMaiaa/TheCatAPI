@@ -28,7 +28,6 @@ import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
-import com.example.thecatapi_sword.view.ui.theme.BreedDetailScreen
 
 class Favourites : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,7 +39,7 @@ class Favourites : ComponentActivity() {
                 Scaffold(
                     bottomBar = {
                         BottomNavBar(
-                            currentRoute = BottomNavItem.Favoritos.route,
+                            currentRoute = BottomNavItem.Favourites.route,
                             navController = navController,
                             activity = this
                         )
@@ -48,14 +47,15 @@ class Favourites : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = BottomNavItem.Favoritos.route,
+                        startDestination = BottomNavItem.Favourites.route,
                         modifier = Modifier.padding(innerPadding)
                     ) {
-                        composable(BottomNavItem.Favoritos.route) {
+                        composable(BottomNavItem.Favourites.route) {
                             FavouriteScreen(navController = navController)
                         }
-                        composable("details") {
-                            BreedDetailScreen(navController = navController)
+                        composable("details/{breedId}") { backStackEntry ->
+                            val breedId = backStackEntry.arguments?.getString("breedId")
+                            BreedDetailScreen(navController = navController, breedId = breedId ?: "")
                         }
                     }
                 }

@@ -17,4 +17,9 @@ interface BreedClient {
     suspend fun getImageById(
         @Path("image_id") imageId: String
     ): Response<ImageData>
+
+    @GET("breeds/{breed_id}")
+    suspend fun getBreedById(
+        @Path("breed_id") breedId: String
+    ): Response<BreedDetail>
 }

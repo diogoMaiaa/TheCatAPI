@@ -1,5 +1,6 @@
-package com.example.thecatapi_sword.view.ui.theme
+package com.example.thecatapi_sword.view
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,18 +18,52 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.thecatapi_sword.model.BreedDetail
+import com.example.thecatapi_sword.model.TheCatAPI
+import com.example.thecatapi_sword.viewmodel.BreedViewModel
 
 @Composable
-fun BreedDetailScreen(navController: NavController) {
-    val breed = Breed(
-        name = "Maine Coon",
-        imageUrl = "https://cdn2.thecatapi.com/images/0XYvRd7oD.jpg",
-        origin = "United States",
-        temperament = "Adaptable, Intelligent, Loving, Gentle, Independent",
-        description = "The Maine Coon is one of the largest domesticated cat breeds. It has a distinctive physical appearance and is known for its friendly and intelligent nature."
-    )
+fun BreedDetailScreen(navController: NavController, breedId: String, viewModel: BreedViewModel = viewModel()) {
+    val breedState = produceState<BreedDetail?>(initialValue = null, breedId) {
+        try {
+            val response = TheCatAPI.api.getBreedById(breedId)
+            this.value = if (response.isSuccessful) {
+                val breed = response.body()
+                if (breed != null) {
+                    BreedDetail(
+                        name = breed.name,
+                        origin = breed.origin,
+                        reference_image_id = breed.reference_image_id,
+                        temperament = breed.temperament,
+                        description = breed.description
+                    )
+                } else null
+            } else null
+        } catch (e: Exception) {
+            Log.e("BreedDetailScreen", "Erro ao carregar dados: ${e.message}")
+            this.value = null
+        }
+    }
+
+    val breed = breedState.value
+
+    if (breed == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    var imageUrl by remember(breed.reference_image_id) { mutableStateOf<String?>(null) }
+    LaunchedEffect(breed.reference_image_id) {
+        if (breed.reference_image_id.isNotBlank()) {
+            imageUrl = viewModel.getImageUrl(breed.reference_image_id)
+        }
+    }
+
 
     var isFavorite by remember { mutableStateOf(true) }
 
@@ -82,7 +117,7 @@ fun BreedDetailScreen(navController: NavController) {
                 .clip(RoundedCornerShape(16.dp))
         ) {
             Image(
-                painter = rememberAsyncImagePainter(breed.imageUrl),
+                painter = rememberAsyncImagePainter(imageUrl),
                 contentDescription = breed.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -119,10 +154,4 @@ fun BreedDetailScreen(navController: NavController) {
     }
 }
 
-data class Breed(
-    val name: String,
-    val imageUrl: String,
-    val origin: String,
-    val temperament: String,
-    val description: String
-)
+

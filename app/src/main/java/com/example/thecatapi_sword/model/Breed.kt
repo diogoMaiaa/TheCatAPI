@@ -1,6 +1,7 @@
 package com.example.thecatapi_sword.model
 
 data class Breed(
-    var name : String,
+    var id: String,
+    var name: String,
     val reference_image_id: String
 )

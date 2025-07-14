@@ -22,4 +22,9 @@ class BreedRepository {
         return if (response.isSuccessful) response.body()?.url else null
     }
 
+    suspend fun getBreedById(breedId: String): BreedDetail?{
+        val response = TheCatAPI.api.getBreedById(breedId)
+        return if (response.isSuccessful) response.body() else null
+    }
+
 }
