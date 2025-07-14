@@ -71,10 +71,14 @@ fun GridMenuScreen(
     viewModel: BreedViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val breeds = viewModel.breeds
+    val allBreeds = viewModel.breeds
     val currentPage = viewModel.currentPage
     val totalPages = viewModel.totalPages
     val gridState = rememberLazyGridState()
+
+    val breeds = allBreeds.filter {
+        it.name.contains(searchQuery, ignoreCase = true)
+    }
 
     LaunchedEffect(currentPage) {
         gridState.scrollToItem(0)
@@ -144,6 +148,7 @@ fun GridMenuScreen(
         }
     }
 }
+
 
 @Composable
 fun GridMenuItem(
