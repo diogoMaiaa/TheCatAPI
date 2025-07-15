@@ -1,66 +1,82 @@
 package com.example.thecatapi_sword.viewmodel
 
+import android.app.Application
 import androidx.compose.runtime.*
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.thecatapi_sword.model.Breed
+import coil.ImageLoader
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import com.example.thecatapi_sword.database.AppDatabase
+import com.example.thecatapi_sword.model.BreedEntity
 import com.example.thecatapi_sword.model.BreedRepository
+import com.example.thecatapi_sword.model.TheCatAPI
 import kotlinx.coroutines.launch
 
-class BreedViewModel : ViewModel() {
+class BreedViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = BreedRepository()
+    private val repository: BreedRepository
 
-    var breeds by mutableStateOf<List<Breed>>(emptyList())
-        private set
+    private val _allBreeds = mutableStateListOf<BreedEntity>()
+    val breeds: List<BreedEntity> get() = _allBreeds
 
     var currentPage by mutableStateOf(0)
         private set
 
-    var totalPages by mutableStateOf(1)
+    var isLoading by mutableStateOf(true)
         private set
 
-    private val limitPerPage = 8
+    val pageSize = 8
+    val totalPages: Int
+        get() = (_allBreeds.size + pageSize - 1) / pageSize
 
     init {
+        val context = getApplication<Application>().applicationContext
+        val db = AppDatabase.getDatabase(context)
+        repository = BreedRepository(TheCatAPI.api, db.breedDao(), context)
+
         viewModelScope.launch {
-            val total = repository.getTotalBreeds()
+            try {
+                isLoading = true
+                repository.syncBreedsFromApi()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _allBreeds.clear()
+                _allBreeds.addAll(repository.getBreedsFromDb())
 
-            totalPages = if (total % limitPerPage == 0) {
-                total / limitPerPage
-            } else {
-                total / limitPerPage + 1
+
+                val imageLoader = ImageLoader(context)
+                _allBreeds.forEach { breed ->
+                    val request = ImageRequest.Builder(context)
+                        .data(breed.imageUrl)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.DISABLED)
+                        .build()
+                    imageLoader.enqueue(request)
+                }
+
+                isLoading = false
             }
-
-            fetchBreeds(0)
         }
     }
 
     fun fetchBreeds(page: Int) {
-        if (page < 0 || page >= totalPages) return
-
-        currentPage = page
-        viewModelScope.launch {
-            val result = repository.getBreeds(page)
-            breeds = result ?: emptyList()
-        }
+        currentPage = page.coerceIn(0, totalPages - 1)
     }
 
-    private val imageCache = mutableMapOf<String, String>()
-
-    suspend fun getImageUrl(imageId: String): String? {
-        if (imageCache.containsKey(imageId)) {
-            return imageCache[imageId]
+    fun getPagedBreeds(searchQuery: String): List<BreedEntity> {
+        val filtered = _allBreeds.filter {
+            it.name.contains(searchQuery, ignoreCase = true)
         }
 
-        val url = repository.getImageUrl(imageId)
-        if (url != null) {
-            imageCache[imageId] = url
-        }
-        return url
+        val start = currentPage * pageSize
+        val end = (start + pageSize).coerceAtMost(filtered.size)
+
+        return if (start < end) filtered.subList(start, end) else emptyList()
     }
 
-
-
-
+    suspend fun getBreedById(breedId: String): BreedEntity? {
+        return repository.getBreedFromDbById(breedId)
+    }
 }

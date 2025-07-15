@@ -28,6 +28,10 @@ import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
+import com.example.thecatapi_sword.viewmodel.FavouriteViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.thecatapi_sword.model.BreedEntity
+
 
 class Favourites : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,14 +69,17 @@ class Favourites : ComponentActivity() {
 }
 
 @Composable
-fun FavouriteScreen(modifier: Modifier = Modifier, navController: NavController) {
-    val menuItems = listOf(
-        "Siamês", "Persa", "Maine Coon", "Bengal",
-        "Sphynx", "Ragdoll", "Abyssinian", "British Shorthair"
-    )
+fun FavouriteScreen(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    viewModel: FavouriteViewModel = viewModel()
+) {
+    val favourites by viewModel.favourites
 
-    val imageUrl = "https://cdn2.thecatapi.com/images/0XYvRd7oD.jpg"
-    val favoriteIndices = listOf(0, 1, 2, 3, 4, 5, 6, 7)
+    LaunchedEffect(Unit) {
+        viewModel.loadFavourites()
+    }
+
 
     Column(
         modifier = modifier
@@ -80,7 +87,7 @@ fun FavouriteScreen(modifier: Modifier = Modifier, navController: NavController)
             .padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "Favoritos",
+            text = "Favourites",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp, bottom = 20.dp),
@@ -95,18 +102,25 @@ fun FavouriteScreen(modifier: Modifier = Modifier, navController: NavController)
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            itemsIndexed(menuItems) { index, title ->
+            itemsIndexed(favourites) { _, breed ->
+                val isFavoriteState = remember(breed.id) {
+                    mutableStateOf(true)
+                }
+
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     GridMenuItem(
-                        imageUrl = imageUrl,
-                        isFavorite = index in favoriteIndices,
-                        onClick = { navController.navigate("details") }
+                        imageUrl = breed.imageUrl,
+                        isFavorite = isFavoriteState,
+                        breedId = breed.id,
+                        favoriteViewModel = viewModel,
+                        onClick = { navController.navigate("details/${breed.id}") }
                     )
                     Text(
-                        text = title,
+                        text = breed.name,
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
@@ -117,35 +131,6 @@ fun FavouriteScreen(modifier: Modifier = Modifier, navController: NavController)
     }
 }
 
-@Composable
-fun GridMenuItem(
-    imageUrl: String,
-    isFavorite: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() }
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(imageUrl)
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
 
-        Icon(
-            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-            contentDescription = "Favorite",
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-        )
-    }
-}
+
+

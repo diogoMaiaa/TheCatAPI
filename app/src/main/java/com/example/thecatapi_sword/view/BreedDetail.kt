@@ -1,6 +1,6 @@
 package com.example.thecatapi_sword.view
 
-import android.util.Log
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,51 +21,39 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.thecatapi_sword.model.BreedDetail
-import com.example.thecatapi_sword.model.TheCatAPI
+import com.example.thecatapi_sword.model.BreedEntity
+import com.example.thecatapi_sword.model.FavouriteBreedEntity
 import com.example.thecatapi_sword.viewmodel.BreedViewModel
+import com.example.thecatapi_sword.viewmodel.FavouriteViewModel
+import kotlinx.coroutines.launch
 
 @Composable
-fun BreedDetailScreen(navController: NavController, breedId: String, viewModel: BreedViewModel = viewModel()) {
-    val breedState = produceState<BreedDetail?>(initialValue = null, breedId) {
-        try {
-            val response = TheCatAPI.api.getBreedById(breedId)
-            this.value = if (response.isSuccessful) {
-                val breed = response.body()
-                if (breed != null) {
-                    BreedDetail(
-                        name = breed.name,
-                        origin = breed.origin,
-                        reference_image_id = breed.reference_image_id,
-                        temperament = breed.temperament,
-                        description = breed.description
-                    )
-                } else null
-            } else null
-        } catch (e: Exception) {
-            Log.e("BreedDetailScreen", "Erro ao carregar dados: ${e.message}")
-            this.value = null
-        }
-    }
+fun BreedDetailScreen(
+    navController: NavController,
+    breedId: String,
+    viewModel: BreedViewModel = viewModel(),
+    favoriteViewModel: FavouriteViewModel = viewModel()
+) {
+    val breed by produceState<BreedEntity?>(initialValue = null, breedId) {
+        value = viewModel.getBreedById(breedId)
 
-    val breed = breedState.value
+    }
 
     if (breed == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            Text("Raça não encontrada.")
         }
         return
     }
 
-    var imageUrl by remember(breed.reference_image_id) { mutableStateOf<String?>(null) }
-    LaunchedEffect(breed.reference_image_id) {
-        if (breed.reference_image_id.isNotBlank()) {
-            imageUrl = viewModel.getImageUrl(breed.reference_image_id)
-        }
+
+
+    val coroutineScope = rememberCoroutineScope()
+    var isFavorite by remember { mutableStateOf(false) }
+
+    LaunchedEffect(breedId) {
+        isFavorite = favoriteViewModel.isFavorite(breedId)
     }
-
-
-    var isFavorite by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
@@ -95,7 +83,21 @@ fun BreedDetailScreen(navController: NavController, breedId: String, viewModel: 
             }
 
             IconButton(
-                onClick = { isFavorite = !isFavorite },
+                onClick = {
+                    val favorite = FavouriteBreedEntity(
+                        id = breed!!.id,
+
+                    )
+
+                    coroutineScope.launch {
+                        if (isFavorite) {
+                            favoriteViewModel.deleteFavorite(favorite)
+                        } else {
+                            favoriteViewModel.insertFavorite(favorite)
+                        }
+                        isFavorite = !isFavorite
+                    }
+                },
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
@@ -117,8 +119,8 @@ fun BreedDetailScreen(navController: NavController, breedId: String, viewModel: 
                 .clip(RoundedCornerShape(16.dp))
         ) {
             Image(
-                painter = rememberAsyncImagePainter(imageUrl),
-                contentDescription = breed.name,
+                painter = rememberAsyncImagePainter(breed!!.imageUrl),
+                contentDescription = breed!!.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
@@ -126,32 +128,13 @@ fun BreedDetailScreen(navController: NavController, breedId: String, viewModel: 
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = breed.name,
-            style = MaterialTheme.typography.titleLarge
-        )
-
+        Text(text = breed!!.name, style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Origin: ${breed.origin}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
+        Text(text = "Origin: ${breed!!.origin}", style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Temperament: ${breed.temperament}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
+        Text(text = "Temperament: ${breed!!.temperament}", style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = breed.description,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text = breed!!.description, style = MaterialTheme.typography.bodyMedium)
     }
 }
-
 

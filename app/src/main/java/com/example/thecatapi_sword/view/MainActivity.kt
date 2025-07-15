@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -26,8 +27,10 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.thecatapi_sword.model.FavouriteBreedEntity
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
 import com.example.thecatapi_sword.viewmodel.BreedViewModel
+import com.example.thecatapi_sword.viewmodel.FavouriteViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,19 +71,18 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GridMenuScreen(
     navController: NavController,
-    viewModel: BreedViewModel = viewModel()
+    viewModel: BreedViewModel = viewModel(),
+    favoriteViewModel: FavouriteViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val allBreeds = viewModel.breeds
-    val currentPage = viewModel.currentPage
-    val totalPages = viewModel.totalPages
     val gridState = rememberLazyGridState()
 
-    val breeds = allBreeds.filter {
-        it.name.contains(searchQuery, ignoreCase = true)
-    }
+    val breeds = viewModel.getPagedBreeds(searchQuery)
+    val currentPage = viewModel.currentPage
+    val totalPages = viewModel.totalPages
+    val isLoading = viewModel.isLoading
 
-    LaunchedEffect(currentPage) {
+    LaunchedEffect(currentPage, searchQuery) {
         gridState.scrollToItem(0)
     }
 
@@ -110,61 +112,69 @@ fun GridMenuScreen(
                 .padding(top = 4.dp, bottom = 12.dp)
         )
 
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            itemsIndexed(breeds) { _, breed ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    GridMenuItem(
-                        imageId = breed.reference_image_id ?: "",
-                        isFavorite = false,
-                        onClick = { navController.navigate("details/${breed.id}") },
-                        viewModel = viewModel
-                    )
-                    Text(
-                        text = breed.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                itemsIndexed(breeds) { _, breed ->
+                    val isFavoriteState = remember { mutableStateOf(false) }
+
+                    LaunchedEffect(breed.id) {
+                        isFavoriteState.value = favoriteViewModel.isFavorite(breed.id)
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        GridMenuItem(
+                            imageUrl = breed.imageUrl,
+                            isFavorite = isFavoriteState,
+                            favoriteViewModel = favoriteViewModel,
+                            breedId = breed.id,
+                            onClick = { navController.navigate("details/${breed.id}") }
+                        )
+                        Text(
+                            text = breed.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+
+                item(span = { GridItemSpan(2) }) {
+                    PaginationControls(
+                        currentPage = currentPage,
+                        totalPages = totalPages,
+                        onPrevious = { viewModel.fetchBreeds(currentPage - 1) },
+                        onNext = { viewModel.fetchBreeds(currentPage + 1) }
                     )
                 }
-            }
-
-            item(span = { GridItemSpan(2) }) {
-                PaginationControls(
-                    currentPage = currentPage,
-                    totalPages = totalPages,
-                    onPrevious = { viewModel.fetchBreeds(currentPage - 1) },
-                    onNext = { viewModel.fetchBreeds(currentPage + 1) }
-                )
             }
         }
     }
 }
 
-
 @Composable
 fun GridMenuItem(
-    imageId: String,
-    isFavorite: Boolean,
-    onClick: () -> Unit,
-    viewModel: BreedViewModel
+    imageUrl: String?,
+    isFavorite: MutableState<Boolean>,
+    breedId: String,
+    favoriteViewModel : FavouriteViewModel = viewModel(),
+    onClick: () -> Unit
 ) {
-    var imageUrl by remember(imageId) { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(imageId) {
-        if (imageId.isNotBlank()) {
-            imageUrl = viewModel.getImageUrl(imageId)
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -182,15 +192,29 @@ fun GridMenuItem(
             modifier = Modifier.fillMaxSize()
         )
 
-        Icon(
-            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-            contentDescription = "Favourite",
+        IconButton(
+            onClick = {
+                val favorite = FavouriteBreedEntity(id = breedId)
+                if (isFavorite.value) {
+                    favoriteViewModel.deleteFavorite(favorite)
+                } else {
+                    favoriteViewModel.insertFavorite(favorite)
+                }
+                isFavorite.value = !isFavorite.value
+            },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(8.dp)
-        )
+        ) {
+            Icon(
+                imageVector = if (isFavorite.value) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                contentDescription = "Favourite",
+                tint = if (isFavorite.value) Color.Red else Color.Gray
+            )
+        }
     }
 }
+
 
 @Composable
 fun PaginationControls(
