@@ -11,7 +11,7 @@ import com.example.thecatapi_sword.model.FavouriteBreedEntity
 
 @Database(
     entities = [FavouriteBreedEntity::class, BreedEntity::class],
-    version = 5
+    version = 6
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun favoriteBreedDao(): FavouriteBreedDao

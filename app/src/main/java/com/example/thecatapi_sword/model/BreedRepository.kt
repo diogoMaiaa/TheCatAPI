@@ -29,6 +29,7 @@ class BreedRepository(
                         origin = it.origin,
                         temperament = it.temperament,
                         description = it.description,
+                        life_span = it.life_span,
                         imageUrl = imageurl
                     )
                 } ?: emptyList()

@@ -34,6 +34,7 @@ class FavouriteViewModel(application: Application) : AndroidViewModel(applicatio
     fun loadFavourites() {
         viewModelScope.launch {
             favourites.value = dao.getFavouriteBreeds()
+            calculateAverageLifeSpan()
         }
     }
 
@@ -55,5 +56,23 @@ class FavouriteViewModel(application: Application) : AndroidViewModel(applicatio
 
     suspend fun isFavorite(breedId: String): Boolean {
         return repository.isFavorite(breedId)
+    }
+
+    val averageMinLifeSpan = mutableStateOf(0.0)
+
+    fun calculateAverageLifeSpan() {
+        val list = favourites.value
+
+        val minLifespans = list.mapNotNull { breed ->
+            val min = breed.life_span.split("-").firstOrNull()?.trim()?.toIntOrNull()
+            min
+        }
+
+        if (minLifespans.isNotEmpty()) {
+            val average = minLifespans.average()
+            averageMinLifeSpan.value = average
+        } else {
+            averageMinLifeSpan.value = 0.0
+        }
     }
 }
