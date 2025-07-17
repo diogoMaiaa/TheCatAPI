@@ -48,7 +48,7 @@ class BreedViewModelTest {
     fun setup() = runTest {
         Dispatchers.setMain(testDispatcher)
 
-        coEvery { repository.syncBreedsFromApi() } just Runs
+        coEvery { repository.syncBreedsFromApi() } returns true
         coEvery { repository.getBreedsFromDb() } returns fakeList
 
         val context = mockk<Application>(relaxed = true)
