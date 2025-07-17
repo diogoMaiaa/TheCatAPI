@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -169,7 +170,7 @@ fun FavouriteScreen(
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .padding(top = 8.dp)
-                            .testTag("favourite_name_${breed.id}")
+                            .clickable { navController.navigate("details/${breed.id}") }
                     )
                 }
             }

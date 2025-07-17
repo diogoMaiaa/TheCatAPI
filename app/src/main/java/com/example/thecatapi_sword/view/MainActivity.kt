@@ -198,8 +198,11 @@ fun GridMenuScreen(
                             text = breed.name,
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .clickable { navController.navigate("details/${breed.id}") }
                         )
+
                     }
                 }
 
