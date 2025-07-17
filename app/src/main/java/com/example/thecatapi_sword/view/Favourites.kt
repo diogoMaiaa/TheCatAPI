@@ -1,10 +1,10 @@
 package com.example.thecatapi_sword.view
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,15 +13,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
+import com.example.thecatapi_sword.model.BreedRepository
+import com.example.thecatapi_sword.model.TheCatAPI
+import com.example.thecatapi_sword.database.AppDatabase
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
+import com.example.thecatapi_sword.viewmodel.BreedViewModelFactory
 import com.example.thecatapi_sword.viewmodel.FavouriteViewModel
+import com.example.thecatapi_sword.viewmodel.FavouriteViewModelFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
-
+import com.example.thecatapi_sword.model.FavouriteRepository
 
 class Favourites : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,6 +36,25 @@ class Favourites : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TheCatAPI_SwordTheme {
+                val context = LocalContext.current.applicationContext as Application
+
+                val breedFactory = remember {
+                    BreedViewModelFactory(
+                        context,
+                        BreedRepository(
+                            TheCatAPI.api,
+                            AppDatabase.getDatabase(context).breedDao(),
+                            context
+                        )
+                    )
+                }
+
+                val database = AppDatabase.getDatabase(context)
+                val repository = FavouriteRepository(database.favoriteBreedDao())
+                val factory = remember {
+                    FavouriteViewModelFactory(context, repository)
+                }
+
                 val navController = rememberNavController()
                 Scaffold(
                     bottomBar = {
@@ -48,8 +74,14 @@ class Favourites : ComponentActivity() {
                             FavouriteScreen(navController = navController)
                         }
                         composable("details/{breedId}") { backStackEntry ->
-                            val breedId = backStackEntry.arguments?.getString("breedId")
-                            BreedDetailScreen(navController = navController, breedId = breedId ?: "")
+                            val breedId = backStackEntry.arguments?.getString("breedId") ?: ""
+                            BreedDetailScreen(
+                                navController = navController,
+                                breedId = breedId,
+                                breedViewModelFactory = breedFactory,
+                                favouriteViewModelFactory = factory
+
+                            )
                         }
                     }
                 }
@@ -61,9 +93,18 @@ class Favourites : ComponentActivity() {
 @Composable
 fun FavouriteScreen(
     modifier: Modifier = Modifier,
-    navController: NavController,
-    viewModel: FavouriteViewModel = viewModel()
+    navController: NavController
 ) {
+    val context = LocalContext.current.applicationContext as Application
+    val database = AppDatabase.getDatabase(context)
+    val repository = FavouriteRepository(database.favoriteBreedDao())
+
+    val factory = remember {
+        FavouriteViewModelFactory(context, repository)
+    }
+
+    val viewModel: FavouriteViewModel = viewModel(factory = factory)
+
     val favourites by viewModel.favourites
     val averageMin by remember { viewModel.averageMinLifeSpan }
 
@@ -87,7 +128,7 @@ fun FavouriteScreen(
         )
 
         Text(
-            text = "Média mínima de vida: ${String.format("%.1f", averageMin)} anos",
+            text = "Average LifeSpan: ${String.format("%.1f", averageMin)} years",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
@@ -98,7 +139,9 @@ fun FavouriteScreen(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .testTag("favourites_grid"),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -109,7 +152,9 @@ fun FavouriteScreen(
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("favourite_item_${breed.id}")
                 ) {
                     GridMenuItem(
                         imageUrl = breed.imageUrl,
@@ -122,15 +167,13 @@ fun FavouriteScreen(
                         text = breed.name,
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .testTag("favourite_name_${breed.id}")
                     )
                 }
             }
         }
+
     }
 }
-
-
-
-
-

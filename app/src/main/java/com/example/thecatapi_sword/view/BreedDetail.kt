@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -31,9 +33,13 @@ import kotlinx.coroutines.launch
 fun BreedDetailScreen(
     navController: NavController,
     breedId: String,
-    viewModel: BreedViewModel = viewModel(),
-    favoriteViewModel: FavouriteViewModel = viewModel()
+    breedViewModelFactory: ViewModelProvider.Factory,
+    favouriteViewModelFactory: ViewModelProvider.Factory,
+    favoriteViewModel: FavouriteViewModel = viewModel(factory = favouriteViewModelFactory)
 ) {
+
+    val viewModel: BreedViewModel = viewModel(factory = breedViewModelFactory)
+
     val breed by produceState<BreedEntity?>(initialValue = null, breedId) {
         value = viewModel.getBreedById(breedId)
 
@@ -41,12 +47,10 @@ fun BreedDetailScreen(
 
     if (breed == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Raça não encontrada.")
+            Text("Breed Not Found.")
         }
         return
     }
-
-
 
     val coroutineScope = rememberCoroutineScope()
     var isFavorite by remember { mutableStateOf(false) }
@@ -76,7 +80,7 @@ fun BreedDetailScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Voltar",
+                    contentDescription = "Back",
                     tint = Color.Black,
                     modifier = Modifier.size(28.dp)
                 )
@@ -105,7 +109,7 @@ fun BreedDetailScreen(
             ) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = "Favorito",
+                    contentDescription = "Favourite",
                     tint = if (isFavorite) Color.Red else Color.Gray,
                     modifier = Modifier.size(28.dp)
                 )
@@ -117,6 +121,7 @@ fun BreedDetailScreen(
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(16.dp))
+                .testTag("breed_image_${breed!!.id}")
         ) {
             Image(
                 painter = rememberAsyncImagePainter(breed!!.imageUrl),

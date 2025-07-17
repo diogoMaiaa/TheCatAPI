@@ -1,21 +1,22 @@
 package com.example.thecatapi_sword.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
-import com.example.thecatapi_sword.database.AppDatabase
 import com.example.thecatapi_sword.model.BreedEntity
 import com.example.thecatapi_sword.model.BreedRepository
-import com.example.thecatapi_sword.model.TheCatAPI
 import kotlinx.coroutines.launch
 
-class BreedViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository: BreedRepository
+class BreedViewModel(
+    application: Application,
+    private val repository: BreedRepository,
+    private val preloadImages: Boolean = true
+) : AndroidViewModel(application) {
 
     private val _allBreeds = mutableStateListOf<BreedEntity>()
     val breeds: List<BreedEntity> get() = _allBreeds
@@ -32,20 +33,27 @@ class BreedViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val context = getApplication<Application>().applicationContext
-        val db = AppDatabase.getDatabase(context)
-        repository = BreedRepository(TheCatAPI.api, db.breedDao(), context)
 
         viewModelScope.launch {
-            try {
-                isLoading = true
-                repository.syncBreedsFromApi()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _allBreeds.clear()
-                _allBreeds.addAll(repository.getBreedsFromDb())
+            isLoading = true
 
 
+            if (shouldSync(context)) {
+                try {
+                    val success = repository.syncBreedsFromApi()
+                    if (success) {
+                        saveLastSync(context)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+
+            _allBreeds.clear()
+            _allBreeds.addAll(repository.getBreedsFromDb())
+
+            if (preloadImages) {
                 val imageLoader = ImageLoader(context)
                 _allBreeds.forEach { breed ->
                     val request = ImageRequest.Builder(context)
@@ -55,11 +63,12 @@ class BreedViewModel(application: Application) : AndroidViewModel(application) {
                         .build()
                     imageLoader.enqueue(request)
                 }
-
-                isLoading = false
             }
+
+            isLoading = false
         }
     }
+
 
     fun fetchBreeds(page: Int) {
         currentPage = page.coerceIn(0, totalPages - 1)
@@ -70,13 +79,34 @@ class BreedViewModel(application: Application) : AndroidViewModel(application) {
             it.name.contains(searchQuery, ignoreCase = true)
         }
 
+        val maxPage = (filtered.size + pageSize - 1) / pageSize
+        if (currentPage >= maxPage) {
+            currentPage = 0
+        }
+
         val start = currentPage * pageSize
         val end = (start + pageSize).coerceAtMost(filtered.size)
 
         return if (start < end) filtered.subList(start, end) else emptyList()
     }
 
+
     suspend fun getBreedById(breedId: String): BreedEntity? {
         return repository.getBreedFromDbById(breedId)
     }
+
+    private fun shouldSync(context: Context) : Boolean {
+        val intervalMinutes = 10L
+        val prefs = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
+        val lastSync = prefs.getLong("last_breed_sync", 0L)
+        val now = System.currentTimeMillis()
+        return (now - lastSync) > intervalMinutes * 60 * 1000
+    }
+
+
+    private fun saveLastSync(context: Context) {
+        val prefs = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putLong("last_breed_sync", System.currentTimeMillis()).apply()
+    }
+
 }

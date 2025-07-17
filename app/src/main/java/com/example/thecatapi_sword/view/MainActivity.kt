@@ -19,18 +19,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.thecatapi_sword.database.AppDatabase
 import com.example.thecatapi_sword.model.FavouriteBreedEntity
+import com.example.thecatapi_sword.model.FavouriteRepository
 import com.example.thecatapi_sword.ui.theme.TheCatAPI_SwordTheme
 import com.example.thecatapi_sword.viewmodel.BreedViewModel
+import com.example.thecatapi_sword.viewmodel.BreedViewModelFactory
 import com.example.thecatapi_sword.viewmodel.FavouriteViewModel
+import com.example.thecatapi_sword.viewmodel.FavouriteViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,6 +45,26 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TheCatAPI_SwordTheme {
+                val context = LocalContext.current.applicationContext as android.app.Application
+
+                val breedFactory = remember {
+                    BreedViewModelFactory(
+                        context,
+                        com.example.thecatapi_sword.model.BreedRepository(
+                            com.example.thecatapi_sword.model.TheCatAPI.api,
+                            com.example.thecatapi_sword.database.AppDatabase.getDatabase(context).breedDao(),
+                            context
+                        )
+                    )
+                }
+
+                val database = AppDatabase.getDatabase(context)
+                val repository = FavouriteRepository(database.favoriteBreedDao())
+
+                val factory = remember {
+                    FavouriteViewModelFactory(context, repository)
+                }
+
                 val navController = rememberNavController()
                 Scaffold(
                     bottomBar = {
@@ -55,12 +81,22 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding)
                     ) {
                         composable(BottomNavItem.List.route) {
-                            GridMenuScreen(navController = navController)
+                            GridMenuScreen(
+                                navController = navController,
+                                breedViewModelFactory = breedFactory,
+                                favouriteViewModelFactory = factory
+                            )
                         }
                         composable("details/{breedId}") { backStackEntry ->
-                            val breedId = backStackEntry.arguments?.getString("breedId")
-                            BreedDetailScreen(navController = navController, breedId = breedId ?: "")
+                            val breedId = backStackEntry.arguments?.getString("breedId") ?: ""
+                            BreedDetailScreen(
+                                navController = navController,
+                                breedId = breedId,
+                                breedViewModelFactory = breedFactory,
+                                favouriteViewModelFactory = factory
+                            )
                         }
+
                     }
                 }
             }
@@ -71,8 +107,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GridMenuScreen(
     navController: NavController,
-    viewModel: BreedViewModel = viewModel(),
-    favoriteViewModel: FavouriteViewModel = viewModel()
+    breedViewModelFactory: ViewModelProvider.Factory,
+    favouriteViewModelFactory: ViewModelProvider.Factory,
+    viewModel: BreedViewModel = viewModel(factory = breedViewModelFactory),
+    favoriteViewModel: FavouriteViewModel = viewModel(factory = favouriteViewModelFactory)
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val gridState = rememberLazyGridState()
@@ -117,7 +155,18 @@ fun GridMenuScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(modifier = Modifier.testTag("loading_indicator"))
+            }
+        } else if (breeds.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No breed found.",
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center
+                )
             }
         } else {
             LazyVerticalGrid(
@@ -167,12 +216,13 @@ fun GridMenuScreen(
     }
 }
 
+
 @Composable
 fun GridMenuItem(
     imageUrl: String?,
     isFavorite: MutableState<Boolean>,
     breedId: String,
-    favoriteViewModel : FavouriteViewModel = viewModel(),
+    favoriteViewModel: FavouriteViewModel,
     onClick: () -> Unit
 ) {
     Box(
@@ -181,6 +231,7 @@ fun GridMenuItem(
             .aspectRatio(1f)
             .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
+            .testTag("breed_item_$breedId")
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -189,7 +240,9 @@ fun GridMenuItem(
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag("breed_image_$breedId")
         )
 
         IconButton(
@@ -205,10 +258,11 @@ fun GridMenuItem(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(8.dp)
+                .testTag("favourite_icon_$breedId")
         ) {
             Icon(
                 imageVector = if (isFavorite.value) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                contentDescription = "Favourite",
+                contentDescription = null,
                 tint = if (isFavorite.value) Color.Red else Color.Gray
             )
         }

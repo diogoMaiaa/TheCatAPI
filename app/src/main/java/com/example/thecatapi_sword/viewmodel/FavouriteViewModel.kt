@@ -4,22 +4,15 @@ import android.app.Application
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.Room
-import com.example.thecatapi_sword.database.AppDatabase
 import com.example.thecatapi_sword.model.BreedEntity
 import com.example.thecatapi_sword.model.FavouriteBreedEntity
 import com.example.thecatapi_sword.model.FavouriteRepository
 import kotlinx.coroutines.launch
 
-class FavouriteViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val dao = Room.databaseBuilder(
-        application,
-        AppDatabase::class.java,
-        "cat_db"
-    ).build().favoriteBreedDao()
-
-    private val repository = FavouriteRepository(dao)
+class FavouriteViewModel(
+    application: Application,
+    private val repository: FavouriteRepository
+) : AndroidViewModel(application) {
 
     var favourites = mutableStateOf<List<BreedEntity>>(emptyList())
         private set
@@ -27,13 +20,15 @@ class FavouriteViewModel(application: Application) : AndroidViewModel(applicatio
     var isFavourite = mutableStateOf(false)
         private set
 
+    val averageMinLifeSpan = mutableStateOf(0.0)
+
     init {
         loadFavourites()
     }
 
     fun loadFavourites() {
         viewModelScope.launch {
-            favourites.value = dao.getFavouriteBreeds()
+            favourites.value = repository.getFavouriteBreeds()
             calculateAverageLifeSpan()
         }
     }
@@ -58,21 +53,15 @@ class FavouriteViewModel(application: Application) : AndroidViewModel(applicatio
         return repository.isFavorite(breedId)
     }
 
-    val averageMinLifeSpan = mutableStateOf(0.0)
-
     fun calculateAverageLifeSpan() {
         val list = favourites.value
-
-        val minLifespans = list.mapNotNull { breed ->
-            val min = breed.life_span.split("-").firstOrNull()?.trim()?.toIntOrNull()
-            min
+        val minLifespans = list.mapNotNull {
+            it.life_span.split("-").firstOrNull()?.trim()?.toIntOrNull()
         }
-
-        if (minLifespans.isNotEmpty()) {
-            val average = minLifespans.average()
-            averageMinLifeSpan.value = average
+        averageMinLifeSpan.value = if (minLifespans.isNotEmpty()) {
+            minLifespans.average()
         } else {
-            averageMinLifeSpan.value = 0.0
+            0.0
         }
     }
 }
